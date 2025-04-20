@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Phantom Paradox | Time Warp Edition</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            touch-action: manipulation;
+            font-family: 'Arial', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            background-color: #000;
+        }
+        #gameUI {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            color: #0ff;
+            font-size: 20px;
+            text-shadow: 0 0 5px #0ff, 0 0 10px #0ff;
+            pointer-events: none;
+            user-select: none;
+            z-index: 5;
+        }
+        #timeBar {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            width: 150px;
+            height: 20px;
+            border: 2px solid #0ff;
+            box-shadow: 0 0 5px #0ff;
+            border-radius: 10px;
+            overflow: hidden;
+            z-index: 5;
+        }
+        #timeFill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #0ff, #f0f);
+            transition: width 0.1s linear;
+        }
+        #startScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #0ff;
+            z-index: 10;
+            text-align: center;
+            background: rgba(0,0,0,0.9);
+        }
+        #startScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+            animation: pulse 2s infinite;
+        }
+        #startButton {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: transparent;
+            color: #0ff;
+            border: 2px solid #0ff;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #0ff;
+            transition: all 0.3s;
+            margin-top: 30px;
+        }
+        #startButton:hover {
+            background: rgba(0,255,255,0.2);
+        }
+        #gameOverScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.9);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: #f0f;
+            z-index: 10;
+            text-align: center;
+        }
+        #gameOverScreen h1 {
+            font-size: 48px;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px #f0f, 0 0 20px #f0f;
+        }
+        #restartButton {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: transparent;
+            color: #f0f;
+            border: 2px solid #f0f;
+            border-radius: 5px;
+            cursor: pointer;
+            box-shadow: 0 0 10px #f0f;
+            transition: all 0.3s;
+            margin-top: 30px;
+        }
+        #restartButton:hover {
+            background: rgba(255,0,255,0.2);
+        }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+            z-index: 5;
+        }
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(0,255,255,0.2);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: #0ff;
+            font-size: 30px;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: manipulation;
+            border: 2px solid #0ff;
+            box-shadow: 0 0 10px #0ff;
+            transition: transform 0.1s;
+        }
+        .control-btn:active {
+            transform: scale(0.9);
+            background: rgba(0,255,255,0.4);
+        }
+        #timeRewindBtn {
+            position: fixed;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 70px;
+            height: 70px;
+            background: rgba(255,0,255,0.2);
+            border: 2px solid #f0f;
+            box-shadow: 0 0 15px #f0f;
+            color: #f0f;
+            z-index: 6;
+        }
+        #timeRewindBtn.active {
+            animation: rewindPulse 0.5s infinite;
+            background: rgba(255,0,255,0.4);
+            box-shadow: 0 0 25px #f0f;
+        }
+        #rewindEffect {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 4;
+            opacity: 0;
+            transition: opacity 0.3s;
+            background: radial-gradient(circle at center, rgba(255,0,255,0.2) 0%, transparent 70%);
+        }
+        #rewindEffect.active {
+            opacity: 1;
+        }
+        #comboDisplay {
+            position: fixed;
+            top: 50px;
+            left: 10px;
+            color: #f0f;
+            font-size: 16px;
+            text-shadow: 0 0 5px #f0f;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 5;
+        }
+        #comboTimer {
+            position: fixed;
+            top: 50px;
+            left: 120px;
+            width: 100px;
+            height: 3px;
+            background: #f0f;
+            transform-origin: left center;
+            transform: scaleX(0);
+            z-index: 5;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        @keyframes rewindPulse {
+            0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px #f0f; }
+            50% { transform: translateX(-50%) scale(1.1); box-shadow: 0 0 30px #f0f; }
+            100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 15px #f0f; }
+        }
+        @keyframes comboPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.1); }
+            100% { transform: scale(1); }
+        }
+        @media (max-width: 600px) {
+            .control-btn {
+                width: 60px;
+                height: 60px;
+                font-size: 24px;
+            }
+            #timeRewindBtn {
+                bottom: 100px;
+                width: 60px;
+                height: 60px;
+            }
+            #startScreen h1, #gameOverScreen h1 {
+                font-size: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="gameUI">
+        Score: <span id="score">0</span> | Time Energy: <span id="timeEnergy">100</span>%
+    </div>
+    <div id="timeBar">
+        <div id="timeFill"></div>
+    </div>
+    <div id="comboDisplay">
+        Time Combo: <span id="comboCount">0</span>x
+    </div>
+    <div id="comboTimer"></div>
+    <div id="rewindEffect"></div>
+    
+    <div id="startScreen">
+        <h1>PHANTOM PARADOX</h1>
+        <p>Navigate the fractured timelines</p>
+        <p>Use time rewind to undo mistakes</p>
+        <p>Build combos for higher scores</p>
+        <button id="startButton">START GAME</button>
+    </div>
+    
+    <div id="gameOverScreen">
+        <h1>PARADOX COLLAPSE</h1>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <p>Highest Combo: <span id="highestCombo">0</span>x</p>
+        <p>Timelines Stabilized: <span id="timelines">0</span></p>
+        <button id="restartButton">TRY AGAIN</button>
+    </div>
+    
+    <div class="controls">
+        <div class="control-btn" id="leftBtn">←</div>
+        <div class="control-btn" id="rightBtn">→</div>
+    </div>
+    <div class="control-btn" id="timeRewindBtn">⏮</div>
+
+    <script>
+        // Game Constants
+        let GAME_WIDTH = window.innerWidth;
+        let GAME_HEIGHT = window.innerHeight;
+        const PLAYER_SIZE = 30;
+        const BULLET_SPEED = 10;
+        const PLAYER_SPEED = 8;
+        const ENEMY_SIZE = 25;
+        const TIME_CRYSTAL_SIZE = 15;
+        const MAX_TIME_ENERGY = 100;
+        const REWIND_COST = 15; // Energy per second
+        const REWIND_DURATION = 3000; // ms
+        const HISTORY_BUFFER_SIZE = 180; // frames (about 3 seconds at 60fps)
+        const COMBO_DURATION = 3000; // ms
+        const COMBO_MULTIPLIER = 0.2; // 20% bonus per combo level
+        
+        // Game variables
+        let canvas, ctx;
+        let player = {
+            x: GAME_WIDTH / 2,
+            y: GAME_HEIGHT - 100,
+            width: PLAYER_SIZE,
+            height: PLAYER_SIZE,
+            speed: PLAYER_SPEED,
+            color: '#0ff',
+            lastShot: 0,
+            shootDelay: 300,
+            trail: []
+        };
+        let bullets = [];
+        let enemies = [];
+        let timeCrystals = [];
+        let explosions = [];
+        let timeWarps = [];
+        let score = 0;
+        let timeEnergy = MAX_TIME_ENERGY;
+        let gameRunning = false;
+        let animationId;
+        let enemySpawnCounter = 0;
+        let enemySpawnRate = 100;
+        let timeCrystalSpawnRate = 300;
+        let timeCrystalSpawnCounter = 0;
+        let leftPressed = false;
+        let rightPressed = false;
+        let isRewinding = false;
+        let rewindStartTime = 0;
+        let playerHistory = [];
+        let enemyHistory = [];
+        let bulletHistory = [];
+        let timelinesStabilized = 0;
+        let comboCount = 0;
+        let comboTimeout = 0;
+        let highestCombo = 0;
+        let lastEnemyKillTime = 0;
+        let difficultyLevel = 1;
+        
+        // DOM elements
+        let scoreElement, timeEnergyElement, finalScoreElement, timelinesElement, highestComboElement;
+        let startScreen, gameOverScreen;
+        let startButton, restartButton;
+        let leftBtn, rightBtn, timeRewindBtn;
+        let timeFill, rewindEffect, comboDisplay, comboCountElement, comboTimer;
+        
+        // Initialize the game
+        function init() {
+            // Set up canvas first
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            resizeCanvas();
+            
+            // Get DOM elements
+            scoreElement = document.getElementById('score');
+            timeEnergyElement = document.getElementById('timeEnergy');
+            finalScoreElement = document.getElementById('finalScore');
+            timelinesElement = document.getElementById('timelines');
+            highestComboElement = document.getElementById('highestCombo');
+            startScreen = document.getElementById('startScreen');
+            gameOverScreen = document.getElementById('gameOverScreen');
+            startButton = document.getElementById('startButton');
+            restartButton = document.getElementById('restartButton');
+            leftBtn = document.getElementById('leftBtn');
+            rightBtn = document.getElementById('rightBtn');
+            timeRewindBtn = document.getElementById('timeRewindBtn');
+            timeFill = document.getElementById('timeFill');
+            rewindEffect = document.getElementById('rewindEffect');
+            comboDisplay = document.getElementById('comboDisplay');
+            comboCountElement = document.getElementById('comboCount');
+            comboTimer = document.getElementById('comboTimer');
+            
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Draw initial screen
+            drawStartScreen();
+            
+            // Handle window resize
+            window.addEventListener('resize', handleResize);
+        }
+        
+        function setupEventListeners() {
+            // Start button
+            startButton.addEventListener('click', function() {
+                startScreen.style.display = 'none';
+                startGame();
+            });
+            
+            // Restart button
+            restartButton.addEventListener('click', restartGame);
+            
+            // Touch controls
+            setupTouchControls();
+            
+            // Keyboard controls
+            setupKeyboardControls();
+        }
+        
+        function setupTouchControls() {
+            leftBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                leftPressed = true;
+            });
+            
+            leftBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                leftPressed = false;
+            });
+            
+            leftBtn.addEventListener('mousedown', () => {
+                leftPressed = true;
+            });
+            
+            leftBtn.addEventListener('mouseup', () => {
+                leftPressed = false;
+            });
+            
+            rightBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                rightPressed = true;
+            });
+            
+            rightBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                rightPressed = false;
+            });
+            
+            rightBtn.addEventListener('mousedown', () => {
+                rightPressed = true;
+            });
+            
+            rightBtn.addEventListener('mouseup', () => {
+                rightPressed = false;
+            });
+            
+            timeRewindBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startRewind();
+            });
+            
+            timeRewindBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                stopRewind();
+            });
+            
+            timeRewindBtn.addEventListener('mousedown', () => {
+                startRewind();
+            });
+            
+            timeRewindBtn.addEventListener('mouseup', () => {
+                stopRewind();
+            });
+        }
+        
+        function setupKeyboardControls() {
+            document.addEventListener('keydown', (e) => {
+                if (!gameRunning) return;
+                if (e.code === 'ArrowLeft' || e.key === 'a') leftPressed = true;
+                if (e.code === 'ArrowRight' || e.key === 'd') rightPressed = true;
+                if (e.code === 'Space' || e.key === 'w') shoot();
+                if (e.code === 'ShiftLeft' || e.key === 's') startRewind();
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.code === 'ArrowLeft' || e.key === 'a') leftPressed = false;
+                if (e.code === 'ArrowRight' || e.key === 'd') rightPressed = false;
+                if (e.code === 'ShiftLeft' || e.key === 's') stopRewind();
+            });
+        }
+        
+        function handleResize() {
+            GAME_WIDTH = window.innerWidth;
+            GAME_HEIGHT = window.innerHeight;
+            resizeCanvas();
+            
+            // Reposition player if game is running
+            if (gameRunning) {
+                player.x = Math.min(GAME_WIDTH - player.width, player.x);
+                player.y = Math.min(GAME_HEIGHT - player.height, player.y);
+            }
+        }
+        
+        function resizeCanvas() {
+            canvas.width = GAME_WIDTH;
+            canvas.height = GAME_HEIGHT;
+        }
+        
+        function startGame() {
+            // Reset game state
+            resetGameState();
+            
+            // Start game loop
+            gameRunning = true;
+            gameLoop();
+        }
+        
+        function resetGameState() {
+            player = {
+                x: GAME_WIDTH / 2,
+                y: GAME_HEIGHT - 100,
+                width: PLAYER_SIZE,
+                height: PLAYER_SIZE,
+                speed: PLAYER_SPEED,
+                color: '#0ff',
+                lastShot: 0,
+                shootDelay: 300,
+                trail: []
+            };
+            bullets = [];
+            enemies = [];
+            timeCrystals = [];
+            explosions = [];
+            timeWarps = [];
+            score = 0;
+            timeEnergy = MAX_TIME_ENERGY;
+            timelinesStabilized = 0;
+            comboCount = 0;
+            highestCombo = 0;
+            difficultyLevel = 1;
+            enemySpawnCounter = 0;
+            timeCrystalSpawnCounter = 0;
+            playerHistory = [];
+            enemyHistory = [];
+            bulletHistory = [];
+            
+            // Update UI
+            scoreElement.textContent = '0';
+            timeEnergyElement.textContent = '100';
+            timeFill.style.width = '100%';
+            comboDisplay.style.opacity = '0';
+            comboTimer.style.transform = 'scaleX(0)';
+        }
+        
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            gameOverScreen.style.display = 'flex';
+            finalScoreElement.textContent = score;
+            timelinesElement.textContent = timelinesStabilized;
+            highestComboElement.textContent = highestCombo;
+            cancelAnimationFrame(animationId);
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            update();
+            render();
+            
+            animationId = requestAnimationFrame(gameLoop);
+        }
+        
+        function update() {
+            updatePlayerPosition();
+            spawnEntities();
+            updateBullets();
+            updateEnemies();
+            updateTimeCrystals();
+            updateEffects();
+            handleTimeRewind();
+            updateComboSystem();
+            updateDifficulty();
+        }
+        
+        function updatePlayerPosition() {
+            if (leftPressed) player.x -= player.speed;
+            if (rightPressed) player.x += player.speed;
+            player.x = Math.max(0, Math.min(GAME_WIDTH - player.width, player.x));
+            
+            // Update player trail for rewind effect
+            if (!isRewinding) {
+                player.trail.push({ x: player.x, y: player.y });
+                if (player.trail.length > 10) {
+                    player.trail.shift();
+                }
+            }
+        }
+        
+        function spawnEntities() {
+            // Spawn enemies
+            enemySpawnCounter++;
+            if (enemySpawnCounter >= enemySpawnRate) {
+                spawnEnemy();
+                enemySpawnCounter = 0;
+                enemySpawnRate = Math.max(20, enemySpawnRate - 1);
+            }
+            
+            // Spawn time crystals
+            timeCrystalSpawnCounter++;
+            if (timeCrystalSpawnCounter >= timeCrystalSpawnRate) {
+                spawnTimeCrystal();
+                timeCrystalSpawnCounter = 0;
+            }
+        }
+        
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].y -= bullets[i].speed;
+                
+                // Remove off-screen bullets
+                if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Check bullet-enemy collisions
+                checkBulletCollisions(i);
+            }
+        }
+        
+        function checkBulletCollisions(bulletIndex) {
+            for (let j = enemies.length - 1; j >= 0; j--) {
+                if (checkCollision(bullets[bulletIndex], enemies[j])) {
+                    createExplosion(enemies[j].x, enemies[j].y, enemies[j].color);
+                    
+                    if (enemies[j].type === 'paradox') {
+                        timelinesStabilized++;
+                        splitParadoxEnemy(enemies[j]);
+                    }
+                    
+                    bullets.splice(bulletIndex, 1);
+                    enemies.splice(j, 1);
+                    
+                    // Score calculation with combo multiplier
+                    const comboBonus = 1 + (comboCount * COMBO_MULTIPLIER);
+                    const points = Math.floor(10 * comboBonus);
+                    score += points;
+                    scoreElement.textContent = score;
+                    
+                    // Update combo
+                    lastEnemyKillTime = Date.now();
+                    comboCount++;
+                    highestCombo = Math.max(highestCombo, comboCount);
+                    updateComboDisplay();
+                    
+                    break;
+                }
+            }
+        }
+        
+        function updateEnemies() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                // Phantom phase effect
+                enemies[i].phaseCounter++;
+                if (enemies[i].phaseCounter >= enemies[i].phaseDuration) {
+                    enemies[i].isPhasing = !enemies[i].isPhasing;
+                    enemies[i].phaseCounter = 0;
+                }
+                
+                // Only move when not phasing
+                if (!enemies[i].isPhasing) {
+                    enemies[i].y += enemies[i].speed;
+                }
+                
+                // Check boundaries and collisions
+                if (enemies[i].y > GAME_HEIGHT) {
+                    enemies.splice(i, 1);
+                    continue;
+                }
+                
+                if (!enemies[i].isPhasing && checkCollision(player, enemies[i])) {
+                    createExplosion(player.x, player.y, player.color);
+                    gameOver();
+                    return;
+                }
+            }
+        }
+        
+        function updateTimeCrystals() {
+            for (let i = timeCrystals.length - 1; i >= 0; i--) {
+                timeCrystals[i].y += timeCrystals[i].speed;
+                
+                if (checkCollision(player, timeCrystals[i])) {
+                    timeEnergy = Math.min(MAX_TIME_ENERGY, timeEnergy + 15);
+                    timeEnergyElement.textContent = timeEnergy;
+                    timeFill.style.width = timeEnergy + '%';
+                    timeCrystals.splice(i, 1);
+                    continue;
+                }
+                
+                if (timeCrystals[i].y > GAME_HEIGHT) {
+                    timeCrystals.splice(i, 1);
+                }
+            }
+        }
+        
+        function updateEffects() {
+            // Update explosions
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                explosions[i].radius += explosions[i].growth;
+                explosions[i].opacity -= 0.02;
+                if (explosions[i].opacity <= 0) {
+                    explosions.splice(i, 1);
+                }
+            }
+            
+            // Update time warps
+            for (let i = timeWarps.length - 1; i >= 0; i--) {
+                timeWarps[i].radius += timeWarps[i].growth;
+                timeWarps[i].opacity -= 0.01;
+                if (timeWarps[i].opacity <= 0) {
+                    timeWarps.splice(i, 1);
+                }
+            }
+        }
+        
+        function updateComboSystem() {
+            if (comboCount > 0) {
+                const timeSinceLastKill = Date.now() - lastEnemyKillTime;
+                const comboProgress = 1 - (timeSinceLastKill / COMBO_DURATION);
+                
+                if (timeSinceLastKill > COMBO_DURATION) {
+                    comboCount = 0;
+                    comboDisplay.style.opacity = '0';
+                    comboTimer.style.transform = 'scaleX(0)';
+                } else {
+                    comboTimer.style.transform = `scaleX(${comboProgress})`;
+                }
+            }
+        }
+        
+        function updateDifficulty() {
+            // Every 1000 points, increase difficulty
+            const newDifficulty = Math.floor(score / 1000) + 1;
+            if (newDifficulty > difficultyLevel) {
+                difficultyLevel = newDifficulty;
+                // Increase enemy speed slightly
+                enemies.forEach(e => e.speed *= 1.05);
+            }
+        }
+        
+        function updateComboDisplay() {
+            comboCountElement.textContent = comboCount;
+            comboDisplay.style.opacity = '1';
+            comboDisplay.style.animation = 'comboPulse 0.3s';
+            setTimeout(() => {
+                comboDisplay.style.animation = '';
+            }, 300);
+            
+            // Reset combo timer
+            comboTimer.style.transform = 'scaleX(1)';
+        }
+        
+        function handleTimeRewind() {
+            if (isRewinding) {
+                // Calculate how much time has passed since rewinding started
+                const elapsed = Date.now() - rewindStartTime;
+                const rewindProgress = Math.min(elapsed / REWIND_DURATION, 1);
+                
+                // Drain time energy based on progress (per second)
+                const energyDrain = (REWIND_COST * elapsed / 1000);
+                timeEnergy = Math.max(0, MAX_TIME_ENERGY - energyDrain);
+                timeEnergyElement.textContent = Math.floor(timeEnergy);
+                timeFill.style.width = timeEnergy + '%';
+                
+                // Only rewind if we have history and energy
+                if (playerHistory.length > 0 && timeEnergy > 0) {
+                    // Calculate how far back to go (up to HISTORY_BUFFER_SIZE frames)
+                    const framesToRewind = Math.min(
+                        Math.floor(rewindProgress * playerHistory.length),
+                        playerHistory.length - 1
+                    );
+                    
+                    // Get the historical frame
+                    const historyFrame = playerHistory[playerHistory.length - 1 - framesToRewind];
+                    
+                    // Rewind player position
+                    player.x = historyFrame.x;
+                    player.y = historyFrame.y;
+                    
+                    // Create visual time warp effects
+                    if (Math.random() < 0.3) {
+                        createTimeWarp(
+                            player.x + (Math.random() - 0.5) * 100,
+                            player.y + (Math.random() - 0.5) * 100
+                        );
+                    }
+                }
+                
+                // Stop rewinding when duration is complete or energy runs out
+                if (elapsed >= REWIND_DURATION || timeEnergy <= 0) {
+                    stopRewind();
+                }
+            } else {
+                // Record history for rewinding when not actively rewinding
+                if (playerHistory.length >= HISTORY_BUFFER_SIZE) {
+                    playerHistory.shift(); // Remove oldest frame
+                }
+                playerHistory.push({ 
+                    x: player.x, 
+                    y: player.y,
+                    timestamp: Date.now()
+                });
+            }
+        }
+
+        function startRewind() {
+            if (timeEnergy <= 0 || isRewinding) return;
+            
+            isRewinding = true;
+            rewindStartTime = Date.now();
+            timeRewindBtn.classList.add('active');
+            rewindEffect.classList.add('active');
+            
+            // Create an initial time warp effect
+            createTimeWarp(player.x + player.width/2, player.y + player.height/2);
+            
+            // Reset combo when rewinding (as it's a defensive move)
+            comboCount = 0;
+            comboDisplay.style.opacity = '0';
+            comboTimer.style.transform = 'scaleX(0)';
+        }
+
+        function stopRewind() {
+            if (!isRewinding) return;
+            
+            isRewinding = false;
+            timeRewindBtn.classList.remove('active');
+            rewindEffect.classList.remove('active');
+            
+            // Create a final time warp effect
+            createTimeWarp(player.x + player.width/2, player.y + player.height/2);
+        }
+
+        function shoot() {
+            const now = Date.now();
+            if (now - player.lastShot < player.shootDelay) return;
+            
+            player.lastShot = now;
+            
+            // Create bullet with combo-based visual effect
+            const bulletColor = comboCount > 0 ? 
+                `hsl(${300 + (comboCount * 10)}, 100%, 50%)` : '#0ff';
+            
+            bullets.push({
+                x: player.x + player.width/2 - 2,
+                y: player.y,
+                width: 4 + (comboCount * 0.5),
+                height: 10 + (comboCount * 1),
+                speed: BULLET_SPEED + (comboCount * 0.5),
+                color: bulletColor
+            });
+        }
+        
+        function spawnEnemy() {
+            const types = ['phantom', 'phantom', 'paradox'];
+            const type = types[Math.floor(Math.random() * types.length)];
+            
+            // Adjust spawn rates based on difficulty
+            const baseSpeed = 2 + (difficultyLevel * 0.2) + Math.random() * 2;
+            
+            enemies.push({
+                x: Math.random() * (GAME_WIDTH - ENEMY_SIZE),
+                y: -ENEMY_SIZE,
+                width: ENEMY_SIZE,
+                height: ENEMY_SIZE,
+                speed: baseSpeed,
+                color: type === 'paradox' ? '#f0f' : `hsl(${120 + (difficultyLevel * 5)}, 100%, 50%)`,
+                type: type,
+                isPhasing: false,
+                phaseCounter: 0,
+                phaseDuration: 30 + Math.random() * 60
+            });
+        }
+        
+        function splitParadoxEnemy(enemy) {
+            for (let i = 0; i < 2; i++) {
+                enemies.push({
+                    x: enemy.x + (Math.random() - 0.5) * 50,
+                    y: enemy.y,
+                    width: ENEMY_SIZE * 0.7,
+                    height: ENEMY_SIZE * 0.7,
+                    speed: enemy.speed * 1.2,
+                    color: '#f0f',
+                    type: 'phantom',
+                    isPhasing: true,
+                    phaseCounter: 0,
+                    phaseDuration: 20 + Math.random() * 40
+                });
+            }
+        }
+        
+        function spawnTimeCrystal() {
+            timeCrystals.push({
+                x: Math.random() * (GAME_WIDTH - TIME_CRYSTAL_SIZE),
+                y: -TIME_CRYSTAL_SIZE,
+                width: TIME_CRYSTAL_SIZE,
+                height: TIME_CRYSTAL_SIZE,
+                speed: 3,
+                color: `hsl(${60 + Math.random() * 30}, 100%, 50%)`
+            });
+        }
+        
+        function createExplosion(x, y, color) {
+            explosions.push({
+                x: x,
+                y: y,
+                radius: 5,
+                growth: 2,
+                color: color,
+                opacity: 1
+            });
+        }
+        
+        function createTimeWarp(x, y) {
+            timeWarps.push({
+                x: x,
+                y: y,
+                radius: 5,
+                growth: 1,
+                color: '#f0f',
+                opacity: 0.7
+            });
+        }
+        
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+            
+            // Draw background and effects
+            drawStarfield();
+            drawTimeWarps();
+            drawExplosions();
+            drawTimeCrystals();
+            drawEnemies();
+            drawBullets();
+            drawPlayer();
+        }
+        
+        function drawStarfield() {
+            // Static stars
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 100; i++) {
+                const x = (i * 7919) % GAME_WIDTH;
+                const y = (i * 6271) % GAME_HEIGHT;
+                const size = (i % 3) + 1;
+                ctx.fillRect(x, y, size, size);
+            }
+            
+            // Twinkling stars
+            const time = Date.now() / 1000;
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 6323) % GAME_WIDTH;
+                const y = (i * 4723) % (GAME_HEIGHT / 2);
+                const brightness = 0.5 + 0.5 * Math.sin(time * 2 + i);
+                ctx.globalAlpha = brightness;
+                ctx.fillRect(x, y, 2, 2);
+                ctx.globalAlpha = 1;
+            }
+            
+            // Paradox rift effect
+            if (isRewinding) {
+                ctx.fillStyle = 'rgba(255, 0, 255, 0.05)';
+                ctx.fillRect(0, 0, GAME_WIDTH, GAME_HEIGHT);
+                
+                // Draw time distortion lines
+                ctx.strokeStyle = 'rgba(255, 0, 255, 0.3)';
+                ctx.lineWidth = 1;
+                for (let i = 0; i < 20; i++) {
+                    const x = Math.random() * GAME_WIDTH;
+                    ctx.beginPath();
+                    ctx.moveTo(x, 0);
+                    ctx.bezierCurveTo(
+                        x + (Math.random() - 0.5) * 100,
+                        GAME_HEIGHT / 3,
+                        x + (Math.random() - 0.5) * 100,
+                        GAME_HEIGHT * 2 / 3,
+                        x,
+                        GAME_HEIGHT
+                    );
+                    ctx.stroke();
+                }
+            }
+        }
+        
+        function drawTimeWarps() {
+            for (const warp of timeWarps) {
+                ctx.beginPath();
+                ctx.arc(warp.x, warp.y, warp.radius, 0, Math.PI * 2);
+                ctx.strokeStyle = warp.color;
+                ctx.globalAlpha = warp.opacity;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                
+                ctx.beginPath();
+                ctx.arc(warp.x, warp.y, warp.radius * 0.6, 0, Math.PI * 2);
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        function drawExplosions() {
+            for (const explosion of explosions) {
+                ctx.beginPath();
+                ctx.arc(explosion.x, explosion.y, explosion.radius, 0, Math.PI * 2);
+                ctx.fillStyle = explosion.color;
+                ctx.globalAlpha = explosion.opacity;
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        function drawTimeCrystals() {
+            for (const crystal of timeCrystals) {
+                ctx.save();
+                ctx.translate(crystal.x + crystal.width/2, crystal.y + crystal.height/2);
+                
+                // Crystal glow
+                ctx.fillStyle = crystal.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -crystal.height/2);
+                ctx.lineTo(crystal.width/2, 0);
+                ctx.lineTo(0, crystal.height/2);
+                ctx.lineTo(-crystal.width/2, 0);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Crystal highlight
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.7;
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                
+                // Inner pulse
+                const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+                ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.3})`;
+                ctx.beginPath();
+                ctx.moveTo(0, -crystal.height/4);
+                ctx.lineTo(crystal.width/4, 0);
+                ctx.lineTo(0, crystal.height/4);
+                ctx.lineTo(-crystal.width/4, 0);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        function drawEnemies() {
+            for (const enemy of enemies) {
+                if (enemy.isPhasing) {
+                    ctx.save();
+                    ctx.globalAlpha = 0.5;
+                    drawEnemyShape(enemy);
+                    ctx.globalAlpha = 1;
+                    ctx.restore();
+                } else {
+                    drawEnemyShape(enemy);
+                }
+            }
+        }
+        
+        function drawEnemyShape(enemy) {
+            ctx.save();
+            ctx.translate(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
+            
+            if (enemy.type === 'paradox') {
+                // Hexagon shape for paradox enemies
+                ctx.fillStyle = enemy.color;
+                ctx.beginPath();
+                for (let i = 0; i < 6; i++) {
+                    const angle = i * Math.PI / 3;
+                    const radius = enemy.width/2;
+                    ctx.lineTo(Math.cos(angle) * radius, Math.sin(angle) * radius);
+                }
+                ctx.closePath();
+                ctx.fill();
+                
+                // Paradox core
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(0, 0, enemy.width/4, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Pulsing effect
+                const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+                ctx.fillStyle = `rgba(255, 0, 255, ${pulse})`;
+                ctx.beginPath();
+                ctx.arc(0, 0, enemy.width/6, 0, Math.PI * 2);
+                ctx.fill();
+            } else {
+                // Triangle shape for phantom enemies
+                ctx.fillStyle = enemy.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -enemy.height/2);
+                ctx.lineTo(enemy.width/2, enemy.height/2);
+                ctx.lineTo(-enemy.width/2, enemy.height/2);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Eye effect
+                ctx.fillStyle = '#fff';
+                ctx.beginPath();
+                ctx.arc(0, -enemy.height/6, enemy.width/8, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawBullets() {
+            for (const bullet of bullets) {
+                ctx.save();
+                ctx.translate(bullet.x + bullet.width/2, bullet.y + bullet.height/2);
+                
+                // Bullet core
+                ctx.fillStyle = bullet.color;
+                ctx.fillRect(-bullet.width/2, -bullet.height/2, bullet.width, bullet.height);
+                
+                // Bullet trail
+                const gradient = ctx.createLinearGradient(0, -bullet.height/2, 0, bullet.height * 2);
+                gradient.addColorStop(0, bullet.color);
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-bullet.width/2, bullet.height/2, bullet.width, bullet.height * 2);
+                
+                // Bullet glow
+                if (comboCount > 0) {
+                    ctx.strokeStyle = '#fff';
+                    ctx.lineWidth = 1;
+                    ctx.globalAlpha = 0.7;
+                    ctx.strokeRect(-bullet.width/2, -bullet.height/2, bullet.width, bullet.height);
+                    ctx.globalAlpha = 1;
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x + player.width/2, player.y + player.height/2);
+            
+            // Draw player trail if rewinding
+            if (isRewinding && player.trail.length > 0) {
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                
+                for (let i = player.trail.length - 1; i >= 0; i--) {
+                    const point = player.trail[i];
+                    const trailX = point.x + player.width/2 - (player.x + player.width/2);
+                    const trailY = point.y + player.height/2 - (player.y + player.height/2);
+                    ctx.lineTo(trailX, trailY);
+                }
+                
+                ctx.stroke();
+            }
+            
+            // Ship body
+            ctx.fillStyle = player.color;
+            ctx.beginPath();
+            ctx.moveTo(0, -player.height/2);
+            ctx.lineTo(player.width/2, player.height/2);
+            ctx.lineTo(-player.width/2, player.height/2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Ship glow
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.7;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            
+            // Cockpit
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(0, -player.height/6, player.width/6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Engine glow
+            if (leftPressed || rightPressed || Math.random() > 0.7) {
+                const intensity = leftPressed || rightPressed ? 1 : 0.5;
+                const gradient = ctx.createLinearGradient(
+                    -player.width/4, player.height/2,
+                    player.width/4, player.height/2 + 15
+                );
+                gradient.addColorStop(0, `rgba(255, 255, 0, ${intensity})`);
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(-player.width/4, player.height/2);
+                ctx.lineTo(0, player.height/2 + 15);
+                ctx.lineTo(player.width/4, player.height/2);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Shield effect when rewinding
+            if (isRewinding) {
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, player.width + 10, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawStartScreen() {
+            drawStarfield();
+            
+            const time = Date.now() / 1000;
+            const pulse1 = 0.5 + 0.5 * Math.sin(time * 1.5);
+            const pulse2 = 0.5 + 0.5 * Math.sin(time * 2);
+            
+            ctx.save();
+            ctx.translate(GAME_WIDTH/2 - 100, GAME_HEIGHT/2 + 50);
+            
+            // Phantom enemy
+            ctx.fillStyle = `rgba(0,255,0,${pulse1})`;
+            ctx.beginPath();
+            ctx.moveTo(0, -20);
+            ctx.lineTo(20, 20);
+            ctx.lineTo(-20, 20);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Paradox enemy
+            ctx.translate(100, 0);
+            ctx.fillStyle = `rgba(255,0,255,${pulse2})`;
+            ctx.beginPath();
+            for (let i = 0; i < 6; i++) {
+                const angle = i * Math.PI / 3;
+                ctx.lineTo(Math.cos(angle) * 20, Math.sin(angle) * 20);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            ctx.restore();
+        }
+        
+        // Start the game when the page loads
+        window.onload = init;
+    </script>
+</body>
+</html>
