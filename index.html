@@ -1,0 +1,965 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Time Paradox Shooter</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: #000;
+            font-family: 'Arial', sans-serif;
+            touch-action: manipulation;
+        }
+        #gameCanvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+        #uiContainer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+        #timeEnergyBar {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            width: 200px;
+            height: 20px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #00ffff;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #timeEnergyFill {
+            height: 100%;
+            width: 100%;
+            background: linear-gradient(90deg, #00ffff, #ff00ff);
+            transition: width 0.1s linear;
+        }
+        #scoreDisplay {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #00ffff;
+            font-size: 24px;
+            text-shadow: 0 0 5px #00ffff;
+        }
+        #rewindButton {
+            position: absolute;
+            bottom: 120px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(255,0,255,0.3);
+            border: 2px solid #ff00ff;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            pointer-events: auto;
+            box-shadow: 0 0 15px #ff00ff;
+            z-index: 10;
+            user-select: none;
+        }
+        #rewindButton:active {
+            background: rgba(255,0,255,0.5);
+        }
+        #rewindCooldown {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.7);
+            top: 0;
+            left: 0;
+            display: none;
+        }
+        .controls {
+            position: absolute;
+            bottom: 20px;
+            width: 100%;
+            display: flex;
+            justify-content: space-between;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+        .control-btn {
+            width: 80px;
+            height: 80px;
+            background: rgba(0,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 30px;
+            cursor: pointer;
+            pointer-events: auto;
+            border: 2px solid #00ffff;
+            box-shadow: 0 0 10px #00ffff;
+            user-select: none;
+        }
+        #startScreen, #gameOverScreen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.8);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+        }
+        #gameOverScreen {
+            display: none;
+        }
+        h1 {
+            font-size: 48px;
+            color: #00ffff;
+            text-shadow: 0 0 10px #00ffff;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 15px 30px;
+            font-size: 20px;
+            background: transparent;
+            color: #00ffff;
+            border: 2px solid #00ffff;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-top: 20px;
+            box-shadow: 0 0 10px #00ffff;
+        }
+        button:hover {
+            background: rgba(0,255,255,0.2);
+        }
+        #timelineDisplay {
+            position: absolute;
+            bottom: 220px;
+            left: 50%;
+            transform: translateX(-50%);
+            color: #ff00ff;
+            font-size: 18px;
+            text-shadow: 0 0 5px #ff00ff;
+        }
+        @keyframes pulse {
+            0% { opacity: 0.7; }
+            50% { opacity: 1; }
+            100% { opacity: 0.7; }
+        }
+        @keyframes rewindEffect {
+            0% { transform: scale(1); opacity: 1; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        #rewindEffect {
+            position: absolute;
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(255,0,255,0.5) 0%, transparent 70%);
+            pointer-events: none;
+            display: none;
+            z-index: 5;
+            animation: rewindEffect 0.5s forwards;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    
+    <div id="uiContainer">
+        <div id="scoreDisplay">SCORE: 0</div>
+        <div id="timeEnergyBar">
+            <div id="timeEnergyFill"></div>
+        </div>
+        <div id="timelineDisplay">TIMELINE STABILITY: 100%</div>
+        
+        <div id="rewindEffect"></div>
+        
+        <div class="controls">
+            <div class="control-btn" id="leftBtn">←</div>
+            <div class="control-btn" id="rightBtn">→</div>
+        </div>
+        <div id="rewindButton">
+            ⏮
+            <div id="rewindCooldown"></div>
+        </div>
+    </div>
+    
+    <div id="startScreen">
+        <h1>TIME PARADOX SHOOTER</h1>
+        <p>Use time rewind strategically to survive</p>
+        <p>Each rewind damages the timeline</p>
+        <p>Stabilize time by collecting chrono-crystals</p>
+        <button id="startButton">BEGIN TIMELINE</button>
+    </div>
+    
+    <div id="gameOverScreen">
+        <h1>TIMELINE COLLAPSED</h1>
+        <p>Final Score: <span id="finalScore">0</span></p>
+        <p>Timeline Stability: <span id="finalStability">100%</span></p>
+        <p>Rewinds Used: <span id="rewindsUsed">0</span></p>
+        <button id="restartButton">TRY AGAIN</button>
+    </div>
+
+    <script>
+        // Game Constants
+        const PLAYER_SIZE = 30;
+        const PLAYER_SPEED = 8;
+        const BULLET_SPEED = 12;
+        const ENEMY_SIZE = 30;
+        const CRYSTAL_SIZE = 20;
+        const MAX_TIME_ENERGY = 100;
+        const REWIND_COST = 25;
+        const REWIND_COOLDOWN = 3000; // ms
+        const TIMELINE_DAMAGE_PER_REWIND = 10;
+        const HISTORY_LENGTH = 180; // 3 seconds at 60fps
+        
+        // Game State
+        let canvas, ctx;
+        let gameWidth, gameHeight;
+        let player = {
+            x: 0, y: 0,
+            width: PLAYER_SIZE,
+            height: PLAYER_SIZE,
+            speed: PLAYER_SPEED,
+            bullets: [],
+            lastShot: 0,
+            shootDelay: 300
+        };
+        let enemies = [];
+        let crystals = [];
+        let explosions = [];
+        let timeEnergy = MAX_TIME_ENERGY;
+        let score = 0;
+        let timelineStability = 100;
+        let rewindsUsed = 0;
+        let gameRunning = false;
+        let leftPressed = false;
+        let rightPressed = false;
+        let isRewinding = false;
+        let rewindCooldown = false;
+        let enemySpawnTimer = 0;
+        let enemySpawnInterval = 100;
+        let crystalSpawnTimer = 0;
+        let crystalSpawnInterval = 300;
+        let difficulty = 1;
+        let playerHistory = [];
+        let enemyHistory = [];
+        let crystalHistory = [];
+        
+        // DOM Elements
+        let scoreDisplay, timeEnergyFill, timelineDisplay;
+        let rewindButton, rewindCooldownDisplay, rewindEffect;
+        let leftBtn, rightBtn;
+        let startScreen, gameOverScreen;
+        let startButton, restartButton;
+        let finalScoreDisplay, finalStabilityDisplay, rewindsUsedDisplay;
+        
+        // Initialize Game
+        function init() {
+            canvas = document.getElementById('gameCanvas');
+            ctx = canvas.getContext('2d');
+            
+            // Get DOM elements
+            scoreDisplay = document.getElementById('scoreDisplay');
+            timeEnergyFill = document.getElementById('timeEnergyFill');
+            timelineDisplay = document.getElementById('timelineDisplay');
+            rewindButton = document.getElementById('rewindButton');
+            rewindCooldownDisplay = document.getElementById('rewindCooldown');
+            rewindEffect = document.getElementById('rewindEffect');
+            leftBtn = document.getElementById('leftBtn');
+            rightBtn = document.getElementById('rightBtn');
+            startScreen = document.getElementById('startScreen');
+            gameOverScreen = document.getElementById('gameOverScreen');
+            startButton = document.getElementById('startButton');
+            restartButton = document.getElementById('restartButton');
+            finalScoreDisplay = document.getElementById('finalScore');
+            finalStabilityDisplay = document.getElementById('finalStability');
+            rewindsUsedDisplay = document.getElementById('rewindsUsed');
+            
+            // Set up event listeners
+            setupControls();
+            
+            // Handle window resize
+            window.addEventListener('resize', resize);
+            resize();
+            
+            // Start screen
+            startButton.addEventListener('click', startGame);
+            restartButton.addEventListener('click', restartGame);
+        }
+        
+        function resize() {
+            gameWidth = window.innerWidth;
+            gameHeight = window.innerHeight;
+            canvas.width = gameWidth;
+            canvas.height = gameHeight;
+            
+            if (!gameRunning) {
+                player.x = gameWidth / 2 - PLAYER_SIZE / 2;
+                player.y = gameHeight - 100;
+            }
+        }
+        
+        function setupControls() {
+            // Keyboard controls
+            document.addEventListener('keydown', (e) => {
+                if (!gameRunning) return;
+                if (e.key === 'ArrowLeft' || e.key === 'a') leftPressed = true;
+                if (e.key === 'ArrowRight' || e.key === 'd') rightPressed = true;
+                if (e.key === ' ' || e.key === 'w') shoot();
+                if (e.key === 'Shift' || e.key === 's') startRewind();
+            });
+            
+            document.addEventListener('keyup', (e) => {
+                if (e.key === 'ArrowLeft' || e.key === 'a') leftPressed = false;
+                if (e.key === 'ArrowRight' || e.key === 'd') rightPressed = false;
+                if (e.key === 'Shift' || e.key === 's') stopRewind();
+            });
+            
+            // Touch controls
+            leftBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                leftPressed = true;
+            });
+            leftBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                leftPressed = false;
+            });
+            leftBtn.addEventListener('mousedown', () => leftPressed = true);
+            leftBtn.addEventListener('mouseup', () => leftPressed = false);
+            
+            rightBtn.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                rightPressed = true;
+            });
+            rightBtn.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                rightPressed = false;
+            });
+            rightBtn.addEventListener('mousedown', () => rightPressed = true);
+            rightBtn.addEventListener('mouseup', () => rightPressed = false);
+            
+            rewindButton.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                startRewind();
+            });
+            rewindButton.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                stopRewind();
+            });
+            rewindButton.addEventListener('mousedown', startRewind);
+            rewindButton.addEventListener('mouseup', stopRewind);
+        }
+        
+        function startGame() {
+            // Reset game state
+            player = {
+                x: gameWidth / 2 - PLAYER_SIZE / 2,
+                y: gameHeight - 100,
+                width: PLAYER_SIZE,
+                height: PLAYER_SIZE,
+                speed: PLAYER_SPEED,
+                bullets: [],
+                lastShot: 0,
+                shootDelay: 300
+            };
+            enemies = [];
+            crystals = [];
+            explosions = [];
+            timeEnergy = MAX_TIME_ENERGY;
+            score = 0;
+            timelineStability = 100;
+            rewindsUsed = 0;
+            difficulty = 1;
+            playerHistory = [];
+            enemyHistory = [];
+            crystalHistory = [];
+            
+            // Update UI
+            scoreDisplay.textContent = `SCORE: ${score}`;
+            timeEnergyFill.style.width = '100%';
+            timelineDisplay.textContent = `TIMELINE STABILITY: ${timelineStability}%`;
+            
+            // Hide start screen
+            startScreen.style.display = 'none';
+            gameRunning = true;
+            
+            // Start game loop
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function restartGame() {
+            gameOverScreen.style.display = 'none';
+            startGame();
+        }
+        
+        function gameOver() {
+            gameRunning = false;
+            finalScoreDisplay.textContent = score;
+            finalStabilityDisplay.textContent = `${timelineStability}%`;
+            rewindsUsedDisplay.textContent = rewindsUsed;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            update();
+            render();
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        function update() {
+            // Update player position
+            if (leftPressed) player.x -= player.speed;
+            if (rightPressed) player.x += player.speed;
+            player.x = Math.max(0, Math.min(gameWidth - player.width, player.x));
+            
+            // Auto-shoot
+            const now = Date.now();
+            if (now - player.lastShot > player.shootDelay) {
+                shoot();
+                player.lastShot = now;
+            }
+            
+            // Spawn enemies
+            enemySpawnTimer++;
+            if (enemySpawnTimer >= enemySpawnInterval) {
+                spawnEnemy();
+                enemySpawnTimer = 0;
+                enemySpawnInterval = Math.max(30, 100 - (difficulty * 5));
+            }
+            
+            // Spawn crystals
+            crystalSpawnTimer++;
+            if (crystalSpawnTimer >= crystalSpawnInterval) {
+                spawnCrystal();
+                crystalSpawnTimer = 0;
+            }
+            
+            // Update bullets
+            updateBullets();
+            
+            // Update enemies
+            updateEnemies();
+            
+            // Update crystals
+            updateCrystals();
+            
+            // Update explosions
+            updateExplosions();
+            
+            // Update time energy
+            if (!isRewinding) {
+                timeEnergy = Math.min(MAX_TIME_ENERGY, timeEnergy + 0.1);
+                timeEnergyFill.style.width = `${(timeEnergy / MAX_TIME_ENERGY) * 100}%`;
+            }
+            
+            // Record history for rewinding
+            if (!isRewinding) {
+                if (playerHistory.length >= HISTORY_LENGTH) {
+                    playerHistory.shift();
+                    enemyHistory.shift();
+                    crystalHistory.shift();
+                }
+                
+                playerHistory.push({
+                    x: player.x,
+                    y: player.y,
+                    bullets: player.bullets.map(b => ({...b}))
+                });
+                
+                enemyHistory.push(enemies.map(e => ({...e})));
+                crystalHistory.push(crystals.map(c => ({...c})));
+            }
+            
+            // Increase difficulty
+            if (score > difficulty * 1000) {
+                difficulty++;
+            }
+        }
+        
+        function spawnEnemy() {
+            const type = Math.random() < 0.2 ? 'paradox' : 'normal';
+            
+            enemies.push({
+                x: Math.random() * (gameWidth - ENEMY_SIZE),
+                y: -ENEMY_SIZE,
+                width: ENEMY_SIZE,
+                height: ENEMY_SIZE,
+                speed: 2 + (difficulty * 0.3),
+                type: type,
+                health: type === 'paradox' ? 2 : 1,
+                color: type === 'paradox' ? '#ff00ff' : '#00ff00'
+            });
+        }
+        
+        function spawnCrystal() {
+            crystals.push({
+                x: Math.random() * (gameWidth - CRYSTAL_SIZE),
+                y: -CRYSTAL_SIZE,
+                width: CRYSTAL_SIZE,
+                height: CRYSTAL_SIZE,
+                speed: 3,
+                color: '#ffff00'
+            });
+        }
+        
+        function shoot() {
+            player.bullets.push({
+                x: player.x + player.width / 2 - 2,
+                y: player.y,
+                width: 4,
+                height: 10,
+                speed: BULLET_SPEED
+            });
+        }
+        
+        function updateBullets() {
+            for (let i = player.bullets.length - 1; i >= 0; i--) {
+                const bullet = player.bullets[i];
+                bullet.y -= bullet.speed;
+                
+                // Remove off-screen bullets
+                if (bullet.y < 0) {
+                    player.bullets.splice(i, 1);
+                    continue;
+                }
+                
+                // Check enemy collisions
+                for (let j = enemies.length - 1; j >= 0; j--) {
+                    const enemy = enemies[j];
+                    if (checkCollision(bullet, enemy)) {
+                        enemy.health--;
+                        
+                        if (enemy.health <= 0) {
+                            // Create explosion
+                            explosions.push({
+                                x: enemy.x + enemy.width / 2,
+                                y: enemy.y + enemy.height / 2,
+                                radius: 5,
+                                maxRadius: enemy.width,
+                                color: enemy.color
+                            });
+                            
+                            // Score
+                            score += enemy.type === 'paradox' ? 50 : 20;
+                            scoreDisplay.textContent = `SCORE: ${score}`;
+                            
+                            // Split paradox enemies
+                            if (enemy.type === 'paradox') {
+                                for (let k = 0; k < 2; k++) {
+                                    enemies.push({
+                                        x: enemy.x + (Math.random() - 0.5) * 30,
+                                        y: enemy.y,
+                                        width: ENEMY_SIZE * 0.8,
+                                        height: ENEMY_SIZE * 0.8,
+                                        speed: enemy.speed * 1.2,
+                                        type: 'normal',
+                                        health: 1,
+                                        color: '#00ff00'
+                                    });
+                                }
+                            }
+                            
+                            enemies.splice(j, 1);
+                        }
+                        
+                        player.bullets.splice(i, 1);
+                        break;
+                    }
+                }
+            }
+        }
+        
+        function updateEnemies() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                const enemy = enemies[i];
+                enemy.y += enemy.speed;
+                
+                // Remove off-screen enemies
+                if (enemy.y > gameHeight) {
+                    enemies.splice(i, 1);
+                    continue;
+                }
+                
+                // Check player collision
+                if (checkCollision(player, enemy)) {
+                    explosions.push({
+                        x: player.x + player.width / 2,
+                        y: player.y + player.height / 2,
+                        radius: 5,
+                        maxRadius: player.width,
+                        color: '#ff0000'
+                    });
+                    gameOver();
+                    return;
+                }
+            }
+        }
+        
+        function updateCrystals() {
+            for (let i = crystals.length - 1; i >= 0; i--) {
+                const crystal = crystals[i];
+                crystal.y += crystal.speed;
+                
+                // Remove off-screen crystals
+                if (crystal.y > gameHeight) {
+                    crystals.splice(i, 1);
+                    continue;
+                }
+                
+                // Check player collision
+                if (checkCollision(player, crystal)) {
+                    // Repair timeline
+                    timelineStability = Math.min(100, timelineStability + 5);
+                    timelineDisplay.textContent = `TIMELINE STABILITY: ${timelineStability}%`;
+                    
+                    // Add score
+                    score += 10;
+                    scoreDisplay.textContent = `SCORE: ${score}`;
+                    
+                    crystals.splice(i, 1);
+                }
+            }
+        }
+        
+        function updateExplosions() {
+            for (let i = explosions.length - 1; i >= 0; i--) {
+                const explosion = explosions[i];
+                explosion.radius += 2;
+                
+                if (explosion.radius >= explosion.maxRadius) {
+                    explosions.splice(i, 1);
+                }
+            }
+        }
+        
+        function startRewind() {
+            if (rewindCooldown || isRewinding || timeEnergy < REWIND_COST || playerHistory.length < 10) return;
+            
+            isRewinding = true;
+            timeEnergy -= REWIND_COST;
+            timeEnergyFill.style.width = `${(timeEnergy / MAX_TIME_ENERGY) * 100}%`;
+            
+            // Damage timeline
+            timelineStability = Math.max(0, timelineStability - TIMELINE_DAMAGE_PER_REWIND);
+            timelineDisplay.textContent = `TIMELINE STABILITY: ${timelineStability}%`;
+            rewindsUsed++;
+            
+            // Game over if timeline collapses
+            if (timelineStability <= 0) {
+                gameOver();
+                return;
+            }
+            
+            // Show rewind effect
+            rewindEffect.style.display = 'block';
+            rewindEffect.style.left = `${player.x + player.width/2 - 50}px`;
+            rewindEffect.style.top = `${player.y + player.height/2 - 50}px`;
+            setTimeout(() => {
+                rewindEffect.style.display = 'none';
+            }, 500);
+            
+            // Rewind game state
+            const rewindFrames = Math.min(60, playerHistory.length); // Rewind up to 1 second
+            
+            player.x = playerHistory[playerHistory.length - rewindFrames].x;
+            player.y = playerHistory[playerHistory.length - rewindFrames].y;
+            player.bullets = playerHistory[playerHistory.length - rewindFrames].bullets.map(b => ({...b}));
+            
+            enemies = enemyHistory[enemyHistory.length - rewindFrames].map(e => ({...e}));
+            crystals = crystalHistory[crystalHistory.length - rewindFrames].map(c => ({...c}));
+            
+            // Remove the rewound history
+            playerHistory = playerHistory.slice(0, playerHistory.length - rewindFrames);
+            enemyHistory = enemyHistory.slice(0, enemyHistory.length - rewindFrames);
+            crystalHistory = crystalHistory.slice(0, crystalHistory.length - rewindFrames);
+            
+            // Start cooldown
+            rewindCooldown = true;
+            rewindCooldownDisplay.style.display = 'block';
+            let cooldownTime = REWIND_COOLDOWN;
+            
+            const cooldownInterval = setInterval(() => {
+                cooldownTime -= 100;
+                const percent = (cooldownTime / REWIND_COOLDOWN) * 100;
+                
+                rewindCooldownDisplay.style.background = `conic-gradient(transparent ${percent}%, rgba(0,0,0,0.7) ${percent}%)`;
+                
+                if (cooldownTime <= 0) {
+                    clearInterval(cooldownInterval);
+                    rewindCooldown = false;
+                    rewindCooldownDisplay.style.display = 'none';
+                }
+            }, 100);
+        }
+        
+        function stopRewind() {
+            isRewinding = false;
+        }
+        
+        function checkCollision(obj1, obj2) {
+            return obj1.x < obj2.x + obj2.width &&
+                   obj1.x + obj1.width > obj2.x &&
+                   obj1.y < obj2.y + obj2.height &&
+                   obj1.y + obj1.height > obj2.y;
+        }
+        
+        function render() {
+            // Clear canvas
+            ctx.clearRect(0, 0, gameWidth, gameHeight);
+            
+            // Draw starfield background
+            drawStarfield();
+            
+            // Draw crystals
+            drawCrystals();
+            
+            // Draw enemies
+            drawEnemies();
+            
+            // Draw bullets
+            drawBullets();
+            
+            // Draw player
+            drawPlayer();
+            
+            // Draw explosions
+            drawExplosions();
+            
+            // Draw rewind effect if active
+            if (isRewinding) {
+                ctx.fillStyle = 'rgba(255, 0, 255, 0.1)';
+                ctx.fillRect(0, 0, gameWidth, gameHeight);
+            }
+        }
+        
+        function drawStarfield() {
+            ctx.fillStyle = '#ffffff';
+            
+            // Static stars
+            for (let i = 0; i < 100; i++) {
+                const x = (i * 7919) % gameWidth;
+                const y = (i * 6271) % gameHeight;
+                const size = (i % 3) + 1;
+                ctx.fillRect(x, y, size, size);
+            }
+            
+            // Twinkling stars
+            const time = Date.now() / 1000;
+            for (let i = 0; i < 50; i++) {
+                const x = (i * 6323) % gameWidth;
+                const y = (i * 4723) % gameHeight;
+                const brightness = 0.5 + 0.5 * Math.sin(time * 2 + i);
+                ctx.globalAlpha = brightness;
+                ctx.fillRect(x, y, 2, 2);
+                ctx.globalAlpha = 1;
+            }
+        }
+        
+        function drawCrystals() {
+            for (const crystal of crystals) {
+                ctx.save();
+                ctx.translate(crystal.x + crystal.width/2, crystal.y + crystal.height/2);
+                
+                // Crystal body
+                ctx.fillStyle = crystal.color;
+                ctx.beginPath();
+                ctx.moveTo(0, -crystal.height/2);
+                ctx.lineTo(crystal.width/2, 0);
+                ctx.lineTo(0, crystal.height/2);
+                ctx.lineTo(-crystal.width/2, 0);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Crystal glow
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 1;
+                ctx.globalAlpha = 0.7;
+                ctx.stroke();
+                ctx.globalAlpha = 1;
+                
+                // Inner pulse
+                const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 200);
+                ctx.fillStyle = `rgba(255, 255, 255, ${pulse * 0.3})`;
+                ctx.beginPath();
+                ctx.moveTo(0, -crystal.height/4);
+                ctx.lineTo(crystal.width/4, 0);
+                ctx.lineTo(0, crystal.height/4);
+                ctx.lineTo(-crystal.width/4, 0);
+                ctx.closePath();
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        function drawEnemies() {
+            for (const enemy of enemies) {
+                ctx.save();
+                ctx.translate(enemy.x + enemy.width/2, enemy.y + enemy.height/2);
+                
+                // Enemy body
+                ctx.fillStyle = enemy.color;
+                
+                if (enemy.type === 'paradox') {
+                    // Hexagon shape for paradox enemies
+                    ctx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = i * Math.PI / 3;
+                        ctx.lineTo(Math.cos(angle) * enemy.width/2, Math.sin(angle) * enemy.height/2);
+                    }
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Core
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, enemy.width/4, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Pulse effect
+                    const pulse = 0.5 + 0.5 * Math.sin(Date.now() / 300);
+                    ctx.fillStyle = `rgba(255, 0, 255, ${pulse})`;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, enemy.width/6, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Triangle for normal enemies
+                    ctx.beginPath();
+                    ctx.moveTo(0, -enemy.height/2);
+                    ctx.lineTo(enemy.width/2, enemy.height/2);
+                    ctx.lineTo(-enemy.width/2, enemy.height/2);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    // Eye
+                    ctx.fillStyle = '#ffffff';
+                    ctx.beginPath();
+                    ctx.arc(0, -enemy.height/6, enemy.width/8, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+        }
+        
+        function drawBullets() {
+            for (const bullet of player.bullets) {
+                ctx.save();
+                ctx.translate(bullet.x + bullet.width/2, bullet.y + bullet.height/2);
+                
+                // Bullet core
+                ctx.fillStyle = '#00ffff';
+                ctx.fillRect(-bullet.width/2, -bullet.height/2, bullet.width, bullet.height);
+                
+                // Bullet trail
+                const gradient = ctx.createLinearGradient(0, -bullet.height/2, 0, bullet.height * 2);
+                gradient.addColorStop(0, '#00ffff');
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.fillRect(-bullet.width/2, bullet.height/2, bullet.width, bullet.height * 2);
+                
+                ctx.restore();
+            }
+        }
+        
+        function drawPlayer() {
+            ctx.save();
+            ctx.translate(player.x + player.width/2, player.y + player.height/2);
+            
+            // Ship body
+            ctx.fillStyle = '#00ffff';
+            ctx.beginPath();
+            ctx.moveTo(0, -player.height/2);
+            ctx.lineTo(player.width/2, player.height/2);
+            ctx.lineTo(-player.width/2, player.height/2);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Ship glow
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.globalAlpha = 0.7;
+            ctx.stroke();
+            ctx.globalAlpha = 1;
+            
+            // Cockpit
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.beginPath();
+            ctx.arc(0, -player.height/6, player.width/6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Engine glow
+            if (leftPressed || rightPressed || Math.random() > 0.7) {
+                const intensity = leftPressed || rightPressed ? 1 : 0.5;
+                const gradient = ctx.createLinearGradient(
+                    -player.width/4, player.height/2,
+                    player.width/4, player.height/2 + 15
+                );
+                gradient.addColorStop(0, `rgba(255, 255, 0, ${intensity})`);
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.moveTo(-player.width/4, player.height/2);
+                ctx.lineTo(0, player.height/2 + 15);
+                ctx.lineTo(player.width/4, player.height/2);
+                ctx.closePath();
+                ctx.fill();
+            }
+            
+            // Shield effect when rewinding
+            if (isRewinding) {
+                ctx.strokeStyle = 'rgba(0, 255, 255, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(0, 0, player.width + 10, 0, Math.PI * 2);
+                ctx.stroke();
+            }
+            
+            ctx.restore();
+        }
+        
+        function drawExplosions() {
+            for (const explosion of explosions) {
+                ctx.save();
+                ctx.translate(explosion.x, explosion.y);
+                
+                // Explosion glow
+                const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, explosion.radius);
+                gradient.addColorStop(0, explosion.color);
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(0, 0, explosion.radius, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.restore();
+            }
+        }
+        
+        // Start the game
+        window.onload = init;
+    </script>
+</body>
+</html>
